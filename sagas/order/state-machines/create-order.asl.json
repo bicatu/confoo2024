@@ -7,46 +7,80 @@
             "Resource": "arn:aws:states:::apigateway:invoke",
             "Parameters": {
                 "ApiEndpoint":"${CapturePaymentApi}",
-                "Method":"GET",
+                "Method":"POST",
                 "Stage":"Prod",
                 "Path":"${DefaultPath}capture-payment",
-                "RequestBody.$":"$",
+                "RequestBody.$":"$.amount",
                 "AuthType":"NO_AUTH"
             },
-            "Retry": [
+            "ResultPath": "$.paymentResult",
+            "ResultSelector": {
+                "responseBody.$": "$.ResponseBody",
+                "statusCode.$": "$.StatusCode"
+            },
+            "Catch": [
                 {
-                    "ErrorEquals": [
-                        "States.TaskFailed"
-                    ],
-                    "IntervalSeconds": 15,
-                    "MaxAttempts": 5,
-                    "BackoffRate": 1.5
+                  "ErrorEquals": [
+                    "States.TaskFailed"
+                  ],
+                  "Next": "Cancel Order",
+                  "ResultPath": "$.capturePaymentError"
                 }
-            ],
+              ],
             "Next": "Reserve Stock"
         },
+          "Cancel Order": {
+            "Type": "Pass",
+            "End": true
+          },
         "Reserve Stock": {
             "Type": "Task",
             "Resource": "arn:aws:states:::apigateway:invoke",
             "Parameters": {
                 "ApiEndpoint":"${ReserveStockApi}",
-                "Method":"GET",
+                "Method":"POST",
                 "Stage":"Prod",
                 "Path":"${DefaultPath}reserve-stock",
-                "RequestBody.$":"$",
+                "RequestBody.$":"$.sku",
                 "AuthType":"NO_AUTH"
             },
-            "Retry": [
+            "ResultPath": "$.stockResult",
+            "ResultSelector": {
+                "responseBody.$": "$.ResponseBody",
+                "statusCode.$": "$.StatusCode"
+            },
+            "Catch": [
                 {
-                    "ErrorEquals": [
-                        "States.TaskFailed"
-                    ],
-                    "IntervalSeconds": 15,
-                    "MaxAttempts": 5,
-                    "BackoffRate": 1.5
+                  "ErrorEquals": [
+                    "States.TaskFailed"
+                  ],
+                  "Next": "Refund Payment",
+                  "ResultPath": "$.reserveStockError"
                 }
-            ],
+              ],
+            "Next": "Approve Order"
+        },
+          "Approve Order": {
+            "Type": "Pass",
             "End": true
-        }
+          },
+          "Refund Payment": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "Parameters": {
+                "ApiEndpoint":"${RefundPaymentApi}",
+                "Method":"POST",
+                "Stage":"Prod",
+                "Path":"${DefaultPath}refund-payment",
+                "RequestBody.$":"$.paymentResult.responseBody.transactionId",
+                "AuthType":"NO_AUTH"
+            },
+            "ResultPath": "$.paymentResult",
+            "ResultSelector": {
+                "responseBody.$": "$.ResponseBody",
+                "statusCode.$": "$.StatusCode"
+            },
+            "Next": "Cancel Order"
+          }
     }
 }

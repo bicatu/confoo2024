@@ -5,23 +5,16 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent, context: Contex
     let response: APIGatewayProxyResult;
 
     try {
-        const sku = JSON.parse(event.body as string);
-        if (sku == 'X') {
-            response = {
-                statusCode: 400,
-                body: JSON.stringify({
-                    message: `${sku} out of stock`,
-                }),
-            };
-        } else {
-            response = {
-                statusCode: 200,
-                body: JSON.stringify({
-                    reservationId: randomUUID(),
-                    sku,
-                }),
-            };
-        }
+        const transactionId = JSON.parse(event.body as string);
+
+        response = {
+            statusCode: 200,
+            body: JSON.stringify({
+                transactionId: randomUUID(),
+                message: 'payment refunded',
+                originalTransactionId: transactionId,
+            }),
+        };
     } catch (err) {
         // Error handling
         response = {

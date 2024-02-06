@@ -5,9 +5,10 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent, context: Contex
     let response: APIGatewayProxyResult;
 
     try {
-        
-        const amount = event.queryStringParameters?.amount;
-        if (amount != undefined && parseInt(amount) > 100) {
+        const amount = event.body;
+        if (amount == undefined) throw new Error('amount is required');
+
+        if (parseFloat(amount) > 100) {
             response = {
                 statusCode: 400,
                 body: JSON.stringify({
@@ -22,6 +23,7 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent, context: Contex
                 body: JSON.stringify({
                     transactionId: randomUUID(),
                     messsage: 'transaction approved',
+                    amount: parseFloat(amount),
                 }),
             };
         }
@@ -37,5 +39,4 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent, context: Contex
     }
 
     return response;
-
 };

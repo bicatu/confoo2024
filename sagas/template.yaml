@@ -7,7 +7,7 @@ Description: >
   
 Globals:
   Function:
-    Timeout: 5
+    Timeout: 6
     MemorySize: 256
 
 Resources:
@@ -25,7 +25,7 @@ Resources:
           Type: Api 
           Properties:
             Path: /capture-payment
-            Method: get
+            Method: post
     Metadata: 
       BuildMethod: esbuild
       BuildProperties:
@@ -33,6 +33,29 @@ Resources:
         Target: "es2020"
         EntryPoints: 
         - app.ts
+
+  RefundPaymentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: payment/
+      Handler: refund.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Tracing: Active
+      Events:
+        CapturePayment:
+          Type: Api
+          Properties:
+            Path: /refund-payment
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints: 
+        - refund.ts
 
   ReserveStockFunction:
     Type: AWS::Serverless::Function
@@ -48,7 +71,7 @@ Resources:
           Type: Api
           Properties:
             Path: /reserve-stock
-            Method: get
+            Method: post
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -64,6 +87,7 @@ Resources:
       DefinitionSubstitutions:
         DefaultPath: '/'
         CapturePaymentApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
+        RefundPaymentApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
         ReserveStockApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
       Role: !GetAtt StepFunctionsExecutionRole.Arn
 
@@ -103,6 +127,16 @@ Outputs:
   CapturePaymentFunctionIamRole:
     Description: "Implicit IAM Role created for Capture Payment function"
     Value: !GetAtt CapturePaymentFunctionRole.Arn
+
+  RefundPaymentApi:
+    Description: "API Gateway endpoint URL for Prod stage for RefundPayment function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/refund-payment/"
+  RefundPaymentFunction:
+    Description: "Refund Payment Lambda Function ARN"
+    Value: !GetAtt RefundPaymentFunction.Arn
+  RefundPaymentFunctionIamRole:
+    Description: "Implicit IAM Role created for Refund Payment function"
+    Value: !GetAtt RefundPaymentFunctionRole.Arn
   
   ReserveStockApi:
     Description: "API Gateway endpoint URL for Prod stage for ReserveStock function"
