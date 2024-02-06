@@ -1,0 +1,52 @@
+{
+    "Comment": "Order Saga",
+    "StartAt": "Capture Payment",
+    "States": {
+        "Capture Payment": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "Parameters": {
+                "ApiEndpoint":"${CapturePaymentApi}",
+                "Method":"GET",
+                "Stage":"Prod",
+                "Path":"${DefaultPath}capture-payment",
+                "RequestBody.$":"$",
+                "AuthType":"NO_AUTH"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "Next": "Reserve Stock"
+        },
+        "Reserve Stock": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "Parameters": {
+                "ApiEndpoint":"${ReserveStockApi}",
+                "Method":"GET",
+                "Stage":"Prod",
+                "Path":"${DefaultPath}reserve-stock",
+                "RequestBody.$":"$",
+                "AuthType":"NO_AUTH"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "End": true
+        }
+    }
+}

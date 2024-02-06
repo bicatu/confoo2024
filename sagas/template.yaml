@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sagas
+
+  Sample SAM Template for Sagas
+  
+Globals:
+  Function:
+    Timeout: 5
+    MemorySize: 256
+
+Resources:
+  CapturePaymentFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: payment/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Tracing: Active
+      Events:
+        CapturePayment:
+          Type: Api 
+          Properties:
+            Path: /capture-payment
+            Method: get
+    Metadata: 
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints: 
+        - app.ts
+
+  ReserveStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: inventory/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Tracing: Active
+      Events:
+        CapturePayment:
+          Type: Api
+          Properties:
+            Path: /reserve-stock
+            Method: get
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints: 
+        - app.ts
+
+  CreateOrderStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: './order/state-machines/create-order.asl.json'
+      DefinitionSubstitutions:
+        DefaultPath: '/'
+        CapturePaymentApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
+        ReserveStockApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
+      Role: !GetAtt StepFunctionsExecutionRole.Arn
+
+  StepFunctionsExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+Outputs:
+  CapturePaymentApi:
+    Description: "API Gateway endpoint URL for Prod stage for CapturePayment function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/capture-payment/"
+  CapturePaymentFunction:
+    Description: "Capture Payment Lambda Function ARN"
+    Value: !GetAtt CapturePaymentFunction.Arn
+  CapturePaymentFunctionIamRole:
+    Description: "Implicit IAM Role created for Capture Payment function"
+    Value: !GetAtt CapturePaymentFunctionRole.Arn
+  
+  ReserveStockApi:
+    Description: "API Gateway endpoint URL for Prod stage for ReserveStock function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/reserve-stock/"
+  ReserveStockFunction:
+    Description: "Capture Payment Lambda Function ARN"
+    Value: !GetAtt CapturePaymentFunction.Arn
+  ReserveStockFunctionIamRole:
+    Description: "Implicit IAM Role created for Capture Payment function"
+    Value: !GetAtt CapturePaymentFunctionRole.Arn
