@@ -1,7 +1,34 @@
 {
     "Comment": "Order Saga",
-    "StartAt": "Capture Payment",
+    "StartAt": "Create Fraud Case",
     "States": {
+        "Create Fraud Case": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "Parameters": {
+                "ApiEndpoint":"${CreateFraudCaseApi}",
+                "Method":"POST",
+                "Stage":"Prod",
+                "Path":"${DefaultPath}create-fraud-case",
+                "RequestBody.$":"$.amount",
+                "AuthType":"NO_AUTH"
+            },
+            "ResultPath": "$.fraudResult",
+            "ResultSelector": {
+                "responseBody.$": "$.ResponseBody",
+                "statusCode.$": "$.StatusCode"
+            },
+            "Catch": [
+                {
+                  "ErrorEquals": [
+                    "States.TaskFailed"
+                  ],
+                  "Next": "Cancel Order",
+                  "ResultPath": "$.createFraudCaseError"
+                }
+              ],
+            "Next": "Capture Payment"
+        },
         "Capture Payment": {
             "Type": "Task",
             "Resource": "arn:aws:states:::apigateway:invoke",
@@ -23,11 +50,29 @@
                   "ErrorEquals": [
                     "States.TaskFailed"
                   ],
-                  "Next": "Cancel Order",
+                  "Next": "Cancel Fraud Case",
                   "ResultPath": "$.capturePaymentError"
                 }
               ],
             "Next": "Reserve Stock"
+        },
+        "Cancel Fraud Case": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "Parameters": {
+                "ApiEndpoint":"${CancelFraudCaseApi}",
+                "Method":"POST",
+                "Stage":"Prod",
+                "Path":"${DefaultPath}cancel-fraud-case",
+                "RequestBody.$":"$.fraudResult.responseBody.fraudCaseId",
+                "AuthType":"NO_AUTH"
+            },
+            "ResultPath": "$.fraudResult",
+            "ResultSelector": {
+                "responseBody.$": "$.ResponseBody",
+                "statusCode.$": "$.StatusCode"
+            },
+            "Next": "Cancel Order"
         },
           "Cancel Order": {
             "Type": "Pass",
@@ -80,7 +125,7 @@
                 "responseBody.$": "$.ResponseBody",
                 "statusCode.$": "$.StatusCode"
             },
-            "Next": "Cancel Order"
+            "Next": "Cancel Fraud Case"
           }
     }
 }

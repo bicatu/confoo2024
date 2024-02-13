@@ -11,6 +11,52 @@ Globals:
     MemorySize: 256
 
 Resources:
+  CreateFraudCaseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: fraud/
+      Handler: create.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Tracing: Active
+      Events:
+        CapturePayment:
+          Type: Api
+          Properties:
+            Path: /create-fraud-case
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints: 
+        - create.ts
+
+  CancelFraudCaseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: fraud/
+      Handler: cancel.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Tracing: Active
+      Events:
+        CapturePayment:
+          Type: Api
+          Properties:
+            Path: /cancel-fraud-case
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints: 
+        - cancel.ts
+
   CapturePaymentFunction:
     Type: AWS::Serverless::Function 
     Properties:
@@ -86,6 +132,8 @@ Resources:
       DefinitionUri: './order/state-machines/create-order.asl.json'
       DefinitionSubstitutions:
         DefaultPath: '/'
+        CreateFraudCaseApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
+        CancelFraudCaseApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
         CapturePaymentApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
         RefundPaymentApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
         ReserveStockApi: !Sub "${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com"
@@ -118,6 +166,26 @@ Resources:
                 Resource: "*"
 
 Outputs:
+  CreateFraudCaseApi:
+    Description: "API Gateway endpoint URL for Prod stage for CreateFraudCase function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/create-fraud-case/"
+  CreateFraudCaseFunction:
+    Description: "Create Fraud Case Lambda Function ARN"
+    Value: !GetAtt CreateFraudCaseFunction.Arn
+  CreateFraudCaseFunctionIamRole:
+    Description: "Implicit IAM Role created for Create Fraud Case function"
+    Value: !GetAtt CreateFraudCaseFunctionRole.Arn
+
+  CancelFraudCaseApi:
+    Description: "API Gateway endpoint URL for Prod stage for CancelFraudCase function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/cancel-fraud-case/"
+  CancelFraudCaseFunction:
+    Description: "Cancel Fraud Case Lambda Function ARN"
+    Value: !GetAtt CancelFraudCaseFunction.Arn
+  CancelFraudCaseFunctionIamRole:
+    Description: "Implicit IAM Role created for Cancel Fraud Case function"
+    Value: !GetAtt CancelFraudCaseFunctionRole.Arn
+
   CapturePaymentApi:
     Description: "API Gateway endpoint URL for Prod stage for CapturePayment function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/capture-payment/"
